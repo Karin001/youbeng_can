@@ -1,0 +1,11 @@
+-M
+"$(ProjDirPath)/Project_Settings/Linker_Files/mc9s12zvmc128.prm"
+-ViewHidden
+-WmsgFob"%f%e:%l:%k:%d:%m\n"
+-WmsgSd1100
+-WmsgSd1912 
+-Add("$(ProjDirPath)/FLASH/Sources/main_c.obj"
+"$(ProjDirPath)/FLASH/Sources/phev_can_c.obj"
+"$(ProjDirPath)/FLASH/Project_Settings/Startup_Code/starts12z_c.obj"
+"$(ProjDirPath)/FLASH/Lib/mc9s12zvmc128_c.obj"
+"$(MCUToolsBaseDirEnv)/S12lisa_Support/s12lisac/lib_small/ansii.lib" )
