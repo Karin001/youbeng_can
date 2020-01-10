@@ -29,4 +29,7 @@
 #define BUS_CLOCK BUS_CLOCK_32M //pick the bus speed used
 #define XTAL XTAL_4M
 
+//checkSUM checkCount
+#define CHECK_SUM 0
+#define CHECK_COUNT 0
 #endif

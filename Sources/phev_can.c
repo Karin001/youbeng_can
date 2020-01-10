@@ -221,10 +221,63 @@ void CAN_set_rx_callback(void (*ptr)(CAN_MSG)){
 	
 }
 
+// CAN_PROTOCOL tool function
+struct _CANCheckTool{
+	unsigned char tcu10RxLocalCnt; 
+	void (*pCounterAdd)( unsigned char *cnt);
+	unsigned char (*pCalcCounterRx)( unsigned char *cntLocal,unsigned char cntRemote);
+	unsigned char (*pCheckCRC)(CAN_MSG *message, unsigned char CRCRemote);
+	unsigned char (*pcalcCRC)(unsigned char *data);
+	
+} CANCheckTool;
+
+
+void CounterAdd( unsigned char *cnt){
+	(*cnt)++;
+	(*cnt) %= 0x10;
+}
+unsigned char calcCounterRx(unsigned char *cntLocal,unsigned char cntRemote){
+	CounterAdd(cntLocal);
+	if(*cntLocal != cntRemote){
+		if(*cntLocal != 0){
+			(*cntLocal)--;
+		}else{
+			*cntLocal = 0x0f;
+		}
+		NULL; // record DTC
+		return 0;
+	}
+	return 1;
+}
+unsigned char calcCRC(unsigned char *data){
+	unsigned char i;
+	unsigned char sum = 0;
+	for(i=0;i<7;i++){
+		sum+=(message->data[i]);
+	}
+	sum &= 0xf0;
+	sum ^= 0xf0;
+	return sum;
+}
+unsigned char CheckCRC(CAN_MSG *message, unsigned char CRCRemote){
+	
+	if(CRCRemote!=calcCRC(message->data)){
+		NULL;//record DTC
+		return 0;
+	}
+	return 1;
+	
+}
+void initCANCheckTool(){
+	CANCheckTool.tcu10RxLocalCnt = 0;
+	CANCheckTool.pCalcCounterRx = calcCounterRx;
+	CANCheckTool.pCheckCRC = CheckCRC;
+	CANCheckTool.pCounterAdd = CounterAdd;
+	CANCheckTool.pcalcCRC = calcCRC;
+}
 //CAN message reception interrupt
 void interrupt VectorNumber_Vcan0rx CAN_ISR() {
 	//extract CAN frame information
-
 	unsigned char i;
 	
 	
@@ -246,6 +299,20 @@ void interrupt VectorNumber_Vcan0rx CAN_ISR() {
 	switch (message.id){
 	case 0x10:	
 		readTCUMessage(&TCU_frame, message.data);
+#if(!CHECK_SUM)
+		if(CANCheckTool.pCheckCRC(&message,TCU_frame.TCU_CRCCheck_10)){
+			NULL;
+		} else{
+			break;
+		}
+#endif
+#if(!CHECK_COUNT)
+		if(CANCheckTool.pCalcCounterRx(&(CANCheckTool.tcu10RxLocalCnt),TCU_frame.TCU_RollingCounter_10)){
+			NULL;
+		}else{
+			break;
+		}
+#endif
 		callback_TCU10(&TCU_frame, &IPUMPframe); //CALLBACK
 		setIPUMPFrame(&IPUMPframe, &IPUMP20message);
 	break;
@@ -259,6 +326,7 @@ void interrupt VectorNumber_Vcan0rx CAN_ISR() {
 }
 
 void callback_TOF(){
+	//add cnt and crc  to tx message
 	CAN_send(&IPUMP20message);
 }
 void interrupt VectorNumber_Vtim0ovf TIM0_OVF(void) {
